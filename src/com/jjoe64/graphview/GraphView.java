@@ -336,6 +336,10 @@ abstract public class GraphView extends LinearLayout {
 			return listData.toArray(new GraphViewData[listData.size()]);
 		}
 	}
+	
+	public int getSeriesCount() {
+		return graphSeries.size();
+	}
 
 	public void addSeries(GraphViewSeries series) {
 		graphSeries.add(series);
