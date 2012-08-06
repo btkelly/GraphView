@@ -10,6 +10,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Paint.Align;
 import android.graphics.RectF;
+import android.graphics.Typeface;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -337,6 +338,14 @@ abstract public class GraphView extends LinearLayout {
 		}
 	}
 	
+	public void invalidateAll() {
+		for(int index = 0; index < getChildCount(); index++) {
+			View child = getChildAt(index);
+			child.invalidate();
+		}
+		invalidate();
+	}
+	
 	public int getSeriesCount() {
 		return graphSeries.size();
 	}
@@ -358,6 +367,15 @@ abstract public class GraphView extends LinearLayout {
 	public void removeSeries(GraphViewSeries series)
 	{
 		graphSeries.remove(series);
+	}
+	
+	public void setLabelFont(String fontName) {
+		Typeface typeface = Typeface.createFromAsset(getContext().getAssets(), fontName);
+		paint.setTypeface(typeface);
+	}
+	
+	public void setLabelFontSize(float size) {
+		paint.setTextSize(size);
 	}
 	
 	protected void drawLegend(Canvas canvas, float height, float width) {
