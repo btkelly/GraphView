@@ -82,17 +82,21 @@ abstract public class GraphView extends LinearLayout {
 			paint.setTextAlign(Align.LEFT);
 			int vers = verlabels.length - 1;
 			for (int i = 0; i < verlabels.length; i++) {
-				paint.setColor(Color.DKGRAY);
-				float y = ((graphheight / vers) * i) + border;
-				canvas.drawLine(horstart, y, width, y, paint);
+                float y = ((graphheight / vers) * i) + border;
+			    if (!hideGrid) {
+				    paint.setColor(Color.DKGRAY);    
+				    canvas.drawLine(horstart, y, width, y, paint);    
+				}
 			}
 
 			// horizontal labels + lines
 			int hors = horlabels.length - 1;
 			for (int i = 0; i < horlabels.length; i++) {
-				paint.setColor(Color.DKGRAY);
-				float x = ((graphwidth / hors) * i) + horstart;
-				canvas.drawLine(x, height - border, x, border, paint);
+			    float x = ((graphwidth / hors) * i) + horstart;
+			    if (!hideGrid) {
+				  paint.setColor(Color.DKGRAY);
+				  canvas.drawLine(x, height - border, x, border, paint);
+			    }
 				paint.setTextAlign(Align.CENTER);
 				if (i==horlabels.length-1)
 					paint.setTextAlign(Align.RIGHT);
@@ -288,7 +292,8 @@ abstract public class GraphView extends LinearLayout {
 	private boolean manualYAxis;
 	private double manualMaxYValue;
 	private double manualMinYValue;
-
+    private boolean hideGrid;
+    
 	/**
 	 *
 	 * @param context
@@ -658,6 +663,14 @@ abstract public class GraphView extends LinearLayout {
 		}
 	}
 
+	 /**
+     * disables the drawing of the background grid if false
+     * @param drawBackground
+     */
+    public void setHideGrid(boolean hideGrid) {
+        this.hideGrid = hideGrid;
+    }
+    
 	/**
 	 * the user can scroll (horizontal) the graph. This is only useful if you use a viewport {@link #setViewPort(double, double)} which doesn't displays all data.
 	 * @param scrollable
