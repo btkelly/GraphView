@@ -115,7 +115,7 @@ abstract public class GraphView extends LinearLayout {
 				for (int i=0; i<graphSeries.size(); i++) {
 					paint.setStrokeWidth(graphSeries.get(i).style.thickness);
 					paint.setColor(graphSeries.get(i).style.color);
-					drawSeries(canvas, _values(i), graphwidth, graphheight, border, minX, minY, diffX, diffY, horstart);
+					drawSeries(canvas, _values(i, yAxisLock), graphwidth, graphheight, border, minX, minY, diffX, diffY, horstart);
 				}
 
 				if (showLegend) drawLegend(canvas, height, width);
@@ -141,7 +141,7 @@ abstract public class GraphView extends LinearLayout {
 				verlabels = null;
 				viewVerLabels.invalidate();
 			}
-			invalidate();
+			invalidateAll(true);
 		}
 
 		/**
@@ -293,6 +293,8 @@ abstract public class GraphView extends LinearLayout {
 	private double manualMaxYValue;
 	private double manualMinYValue;
     private boolean hideGrid;
+    private boolean yAxisLock;
+    private final ArrayList<GraphViewEventListener> eventListeners;
     
 	/**
 	 *
@@ -310,15 +312,53 @@ abstract public class GraphView extends LinearLayout {
 
 		paint = new Paint();
 		graphSeries = new ArrayList<GraphViewSeries>();
+		eventListeners = new ArrayList<GraphViewEventListener>();
 
 		viewVerLabels = new VerLabelsView(context);
 		addView(viewVerLabels);
 		addView(new GraphViewContentView(context), new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 1));
 	}
+	
+	public void addEventListener(GraphViewEventListener listener) {
+		eventListeners.add(listener);
+	}
+	
+	public void removeEventListener(GraphViewEventListener listener) {
+		eventListeners.remove(listener);
+	}
+	
+	public void clearEventListeners() {
+		eventListeners.clear();
+	}
+	
+	private void notifyListeners() {
+		for(GraphViewEventListener listener : eventListeners) {
+			listener.graphChangeOccured(this);
+		}
+	}
+	
+	@Override
+	public void invalidate() {
+		super.invalidate();
+		
+		invalidateAll(false);
+		
+		notifyListeners();
+	}
+	
+	public void invalidateAll(boolean invalidateSelf) {
+		for(int index = 0; index < getChildCount(); index++) {
+			View child = getChildAt(index);
+			child.invalidate();
+		}
+		
+		if(invalidateSelf)
+			invalidate();
+	}
 
-	private GraphViewData[] _values(int idxSeries) {
+	private GraphViewData[] _values(int idxSeries, boolean ignoreViewport) {
 		GraphViewData[] values = graphSeries.get(idxSeries).values;
-		if (viewportStart == 0 && viewportSize == 0) {
+		if ((viewportStart == 0 && viewportSize == 0) || ignoreViewport) {
 			// all data
 			return values;
 		} else {
@@ -341,14 +381,6 @@ abstract public class GraphView extends LinearLayout {
 			}
 			return listData.toArray(new GraphViewData[listData.size()]);
 		}
-	}
-	
-	public void invalidateAll() {
-		for(int index = 0; index < getChildCount(); index++) {
-			View child = getChildAt(index);
-			child.invalidate();
-		}
-		invalidate();
 	}
 	
 	public int getSeriesCount() {
@@ -381,6 +413,10 @@ abstract public class GraphView extends LinearLayout {
 	
 	public void setLabelFontSize(float size) {
 		paint.setTextSize(size);
+	}
+	
+	public void setLockYAxis(boolean lock) {
+		yAxisLock = lock;
 	}
 	
 	protected void drawLegend(Canvas canvas, float height, float width) {
@@ -515,7 +551,7 @@ abstract public class GraphView extends LinearLayout {
 		} else {
 			largest = Integer.MIN_VALUE;
 			for (int i=0; i<graphSeries.size(); i++) {
-				GraphViewData[] values = _values(i);
+				GraphViewData[] values = _values(i, yAxisLock);
 				for (int ii=0; ii<values.length; ii++)
 					if (values[ii].valueY > largest)
 						largest = values[ii].valueY;
@@ -564,7 +600,7 @@ abstract public class GraphView extends LinearLayout {
 		} else {
 			smallest = Integer.MAX_VALUE;
 			for (int i=0; i<graphSeries.size(); i++) {
-				GraphViewData[] values = _values(i);
+				GraphViewData[] values = _values(i, yAxisLock);
 				for (int ii=0; ii<values.length; ii++)
 					if (values[ii].valueY < smallest)
 						smallest = values[ii].valueY;
@@ -616,6 +652,45 @@ abstract public class GraphView extends LinearLayout {
 		manualMinYValue = min;
 		manualYAxis = true;
 	}
+	
+	/**
+	 * Returns the percentage of the graph the viewport is currently showing
+	 * @return
+	 */
+	public double getViewportPercent() {
+		double minX = getMinX(true);
+		double maxX = getMaxX(true);
+		
+		double percent = viewportSize / (maxX - minX);
+		
+		return percent; 
+	}
+	
+	/**
+	 * Returns the percentage of the X axis of the start of the viewport
+	 * @return
+	 */
+	public double getStartViewportPercent() {
+		double minX = getMinX(true);
+		double maxX = getMaxX(true);
+		
+		double percent = viewportStart / (maxX - minX);
+		
+		return percent;
+	}
+	
+	/**
+	 * Sets the left side of the viewport to that percent  
+	 * @param percent
+	 */
+	public void setStartViewportPercent(double percent) {
+		double minX = getMinX(true);
+		double maxX = getMaxX(true);
+		
+		viewportStart = (maxX - minX) * percent;
+		
+		invalidateAll(true);
+	}
 
 	/**
 	 * this forces scrollable = true
@@ -628,6 +703,9 @@ abstract public class GraphView extends LinearLayout {
 			scaleDetector = new ScaleGestureDetector(getContext(), new ScaleGestureDetector.SimpleOnScaleGestureListener() {
 				@Override
 				public boolean onScale(ScaleGestureDetector detector) {
+					if(viewportSize < 1 && detector.getScaleFactor() > 1)
+						return true;
+					
 					double center = viewportStart + viewportSize / 2;
 					viewportSize /= detector.getScaleFactor();
 					viewportStart = center - viewportSize / 2;
