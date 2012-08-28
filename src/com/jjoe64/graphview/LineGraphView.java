@@ -2,7 +2,9 @@ package com.jjoe64.graphview;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Paint.Align;
 
 /**
  * Line Graph View. This draws a line chart.
@@ -14,7 +16,9 @@ import android.graphics.Paint;
  */
 public class LineGraphView extends GraphView {
 	private final Paint paintBackground;
+	private Paint textPaint;
 	private boolean drawBackground;
+	private MovingLabelFormatter labelFormatter;
 
 	public LineGraphView(Context context, String title) {
 		super(context, title);
@@ -26,6 +30,12 @@ public class LineGraphView extends GraphView {
 
 	@Override
 	public void drawSeries(Canvas canvas, GraphViewData[] values, float graphwidth, float graphheight, float border, double minX, double minY, double diffX, double diffY, float horstart) {
+		if(textPaint == null) {			
+			textPaint = new Paint(paint);
+			textPaint.setTextAlign(Align.CENTER);
+			textPaint.setColor(Color.WHITE);
+		}
+		
 		// draw background
 		double lastEndY = 0;
 		double lastEndX = 0;
@@ -43,6 +53,9 @@ public class LineGraphView extends GraphView {
 				float endX = (float) x + (horstart + 1);
 				float endY = (float) (border - y) + graphheight +2;
 
+				if(endY > graphheight + border + 2)
+					continue;
+				
 				if (i > 0) {
 					// fill space between last and current point
 					int numSpace = (int) ((endX - lastEndX) / 3f) +1;
@@ -68,6 +81,7 @@ public class LineGraphView extends GraphView {
 		// draw data
 		lastEndY = 0;
 		lastEndX = 0;
+		double lastLabelX = 0;
 		for (int i = 0; i < values.length; i++) {
 			double valY = values[i].valueY - minY;
 			double ratY = valY / diffY;
@@ -76,17 +90,32 @@ public class LineGraphView extends GraphView {
 			double valX = values[i].valueX - minX;
 			double ratX = valX / diffX;
 			double x = graphwidth * ratX;
+			
+			boolean skipPoint = false;
 
 			if (i > 0) {
 				float startX = (float) lastEndX + (horstart + 1);
+				float labelX = (float) lastLabelX + (horstart + 1);
 				float startY = (float) (border - lastEndY) + graphheight;
 				float endX = (float) x + (horstart + 1);
 				float endY = (float) (border - y) + graphheight;
 
-				canvas.drawLine(startX, startY, endX, endY, paint);
+				if(endY <= graphheight + border)
+					canvas.drawLine(startX, startY, endX, endY, paint);
+				else
+					skipPoint = true;
+				
+				if(labelFormatter != null) {
+					canvas.drawText(labelFormatter.getLabelAtIndex(i), labelX, getHeight() - 5, textPaint);
+				}
 			}
-			lastEndY = y;
-			lastEndX = x;
+			
+			lastLabelX = x;
+			
+			if(!skipPoint) {
+				lastEndY = y;			
+				lastEndX = x;
+			}
 		}
 	}
 
@@ -99,5 +128,15 @@ public class LineGraphView extends GraphView {
 	 */
 	public void setDrawBackground(boolean drawBackground) {
 		this.drawBackground = drawBackground;
+	}
+	
+	public void setMovingLabelFormatter(MovingLabelFormatter formatter) {
+		this.labelFormatter = formatter;
+	}
+	
+	public interface MovingLabelFormatter {
+		
+		public String getLabelAtIndex(int index);
+		
 	}
 }

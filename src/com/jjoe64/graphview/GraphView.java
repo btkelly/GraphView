@@ -68,7 +68,7 @@ abstract public class GraphView extends LinearLayout {
 			double maxX = getMaxX(false);
 			double minX = getMinX(false);
 			double diffX = maxX - minX;
-			float graphheight = height - (2 * border);
+			float graphheight = height - (2 * border) - 8;
 			graphwidth = width;
 
 			if (horlabels == null) {
@@ -89,21 +89,14 @@ abstract public class GraphView extends LinearLayout {
 				}
 			}
 
-			// horizontal labels + lines
+			// horizontal lines
 			int hors = horlabels.length - 1;
 			for (int i = 0; i < horlabels.length; i++) {
 			    float x = ((graphwidth / hors) * i) + horstart;
 			    if (!hideGrid) {
 				  paint.setColor(Color.DKGRAY);
-				  canvas.drawLine(x, height - border, x, border, paint);
+				  canvas.drawLine(x, height - border - 8, x, border, paint);
 			    }
-				paint.setTextAlign(Align.CENTER);
-				if (i==horlabels.length-1)
-					paint.setTextAlign(Align.RIGHT);
-				if (i==0)
-					paint.setTextAlign(Align.LEFT);
-				paint.setColor(Color.WHITE);
-				canvas.drawText(horlabels[i], x, height - 4, paint);
 			}
 
 			paint.setTextAlign(Align.CENTER);
@@ -257,7 +250,7 @@ abstract public class GraphView extends LinearLayout {
 
 			float border = GraphViewConfig.BORDER;
 			float height = getHeight();
-			float graphheight = height - (2 * border);
+			float graphheight = height - (2 * border) - 8;
 
 			if (verlabels == null) {
 				verlabels = generateVerlabels(graphheight);
@@ -285,16 +278,19 @@ abstract public class GraphView extends LinearLayout {
 	private ScaleGestureDetector scaleDetector;
 	private boolean scalable;
 	private NumberFormat numberformatter;
-	private final List<GraphViewSeries> graphSeries;
+	protected final List<GraphViewSeries> graphSeries;
 	private boolean showLegend = false;
 	private float legendWidth = 120;
 	private LegendAlign legendAlign = LegendAlign.MIDDLE;
 	private boolean manualYAxis;
 	private double manualMaxYValue;
 	private double manualMinYValue;
+	private double graphScaleFactor = 1;
     private boolean hideGrid;
     private boolean yAxisLock;
-    private final ArrayList<GraphViewEventListener> eventListeners;
+    private final ArrayList<GraphViewEventListener> eventListeners = new ArrayList<GraphViewEventListener>();
+	private int numPoints = 0;
+	private int numWeeks = 0;
     
 	/**
 	 *
@@ -312,7 +308,6 @@ abstract public class GraphView extends LinearLayout {
 
 		paint = new Paint();
 		graphSeries = new ArrayList<GraphViewSeries>();
-		eventListeners = new ArrayList<GraphViewEventListener>();
 
 		viewVerLabels = new VerLabelsView(context);
 		addView(viewVerLabels);
@@ -332,9 +327,10 @@ abstract public class GraphView extends LinearLayout {
 	}
 	
 	private void notifyListeners() {
-		for(GraphViewEventListener listener : eventListeners) {
-			listener.graphChangeOccured(this);
-		}
+		if(eventListeners != null)
+			for(GraphViewEventListener listener : eventListeners) {
+				listener.graphChangeOccured(this);
+			}
 	}
 	
 	@Override
@@ -356,7 +352,7 @@ abstract public class GraphView extends LinearLayout {
 			invalidate();
 	}
 
-	private GraphViewData[] _values(int idxSeries, boolean ignoreViewport) {
+	protected GraphViewData[] _values(int idxSeries, boolean ignoreViewport) {
 		GraphViewData[] values = graphSeries.get(idxSeries).values;
 		if ((viewportStart == 0 && viewportSize == 0) || ignoreViewport) {
 			// all data
@@ -389,6 +385,9 @@ abstract public class GraphView extends LinearLayout {
 
 	public void addSeries(GraphViewSeries series) {
 		graphSeries.add(series);
+		verlabels = null;
+		numPoints = series.values.length;
+		numWeeks = numPoints / 7;
 	}
 
 	public void removeSeries(int index)
@@ -417,6 +416,14 @@ abstract public class GraphView extends LinearLayout {
 	
 	public void setLockYAxis(boolean lock) {
 		yAxisLock = lock;
+	}
+
+	public int getNumPointsInViewport() {
+		return numPoints;
+	}
+	
+	public int getNumWeeksInViewport() {
+		return numWeeks;
 	}
 	
 	protected void drawLegend(Canvas canvas, float height, float width) {
@@ -606,7 +613,10 @@ abstract public class GraphView extends LinearLayout {
 						smallest = values[ii].valueY;
 			}
 		}
-		return smallest;
+		if(smallest > 0)
+			return smallest;
+		else
+			return 0;
 	}
 
 	public boolean isScrollable() {
@@ -689,7 +699,17 @@ abstract public class GraphView extends LinearLayout {
 		
 		viewportStart = (maxX - minX) * percent;
 		
+		horlabels = null;
+		
 		invalidateAll(true);
+	}
+	
+	/**
+	 * Returns the scale factor of the entire graph	
+	 * @return
+	 */
+	public double getGraphScaleFactor() {
+		return graphScaleFactor;
 	}
 
 	/**
@@ -710,14 +730,22 @@ abstract public class GraphView extends LinearLayout {
 					viewportSize /= detector.getScaleFactor();
 					viewportStart = center - viewportSize / 2;
 					
-					// viewportStart must not be < minX
+					double maxX = getMaxX(true);
 					double minX = getMinX(true);
+					
+					double scaleFactor = viewportSize / (maxX - minX);
+					
+					if(scaleFactor > 1)
+						graphScaleFactor = 1;
+					else
+						graphScaleFactor = scaleFactor;
+					
+					// viewportStart must not be < minX
 					if (viewportStart < minX) {
 						viewportStart = minX;
 					}
 
 					// viewportStart + viewportSize must not be > maxX
-					double maxX = getMaxX(true);
 					double overlap = viewportStart + viewportSize - maxX;
 					if (overlap > 0) {
 						// scroll left
@@ -733,6 +761,9 @@ abstract public class GraphView extends LinearLayout {
 					verlabels = null;
 					horlabels = null;
 					numberformatter = null;
+
+					numPoints = _values(0, false).length;
+					numWeeks = numPoints / 7;
 					invalidate();
 					viewVerLabels.invalidate();
 					return true;
