@@ -66,3 +66,6 @@ See GraphView-Demos for examples.
 <a href="https://github.com/jjoe64/GraphView-Demos">https://github.com/jjoe64/GraphView-Demos<br/>
 <a href="http://www.jjoe64.com/p/graphview-library.html">View GraphView page http://www.jjoe64.com/p/graphview-library.html</a>
 
+<h2>License</h2>
+
+This library is under the LGPL license. A copy of the LGPL as well as the GPL are in the root directory of the source.
