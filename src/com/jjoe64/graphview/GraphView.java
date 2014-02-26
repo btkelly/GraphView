@@ -54,6 +54,7 @@ abstract public class GraphView extends LinearLayout {
 		protected void onDraw(Canvas canvas) {
 
             paint.setAntiAlias(true);
+            paint.setFakeBoldText(true);
 
 			// normal
 			paint.setStrokeWidth(0);
@@ -258,10 +259,11 @@ abstract public class GraphView extends LinearLayout {
 
 			// vertical labels
 			paint.setTextAlign(Align.LEFT);
+            paint.setFakeBoldText(true);
 			int vers = verlabels.length - 1;
 			for (int i = 0; i < verlabels.length; i++) {
 				float y = ((graphheight / vers) * i) + border;
-				paint.setColor(Color.WHITE);
+				paint.setColor(Color.BLACK);
 				canvas.drawText(verlabels[i], 0, y, paint);
 			}
 		}
