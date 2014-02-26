@@ -15,7 +15,7 @@ import android.graphics.Paint.Align;
  * http://www.gnu.org/licenses/lgpl.html
  */
 public class LineGraphView extends GraphView {
-	private final Paint paintBackground;
+	private final Paint paintBackground, strokePaint;
 	private Paint textPaint;
 	private boolean drawBackground;
 	private MovingLabelFormatter labelFormatter;
@@ -24,16 +24,26 @@ public class LineGraphView extends GraphView {
 		super(context, title);
 
 		paintBackground = new Paint();
-		paintBackground.setARGB(255, 20, 40, 60);
-		paintBackground.setStrokeWidth(4);
+        paintBackground.setStyle(Paint.Style.FILL);
+		paintBackground.setARGB(255, 141, 183, 209);
+		paintBackground.setStrokeWidth(6);
+
+        strokePaint = new Paint();
+        strokePaint.setARGB(255, 45, 136, 177);
+        strokePaint.setStrokeWidth(4);
+        strokePaint.setDither(true);
+        strokePaint.setStyle(Paint.Style.STROKE);
 	}
+
 
 	@Override
 	public void drawSeries(Canvas canvas, GraphViewData[] values, float graphwidth, float graphheight, float border, double minX, double minY, double diffX, double diffY, float horstart) {
+
 		if(textPaint == null) {			
 			textPaint = new Paint(paint);
 			textPaint.setTextAlign(Align.CENTER);
-			textPaint.setColor(Color.WHITE);
+			textPaint.setColor(Color.DKGRAY);
+            textPaint.setFakeBoldText(true);
 		}
 		
 		// draw background
@@ -68,8 +78,8 @@ public class LineGraphView extends GraphView {
 
 						// do not draw over the left edge
 						if (startX-horstart > 1) {
-							canvas.drawLine(startX, startY, spaceX, spaceY, paintBackground);
-						}
+                            canvas.drawLine(startX, startY, spaceX, spaceY, paintBackground);
+                        }
 					}
 				}
 
@@ -100,10 +110,11 @@ public class LineGraphView extends GraphView {
 				float endX = (float) x + (horstart + 1);
 				float endY = (float) (border - y) + graphheight;
 
-				if(endY <= graphheight + border)
-					canvas.drawLine(startX, startY, endX, endY, paint);
-				else
+				if(endY <= graphheight + border) {
+					canvas.drawLine(startX, startY, endX, endY, strokePaint);
+                } else {
 					skipPoint = true;
+                }
 				
 				if(labelFormatter != null) {
 					canvas.drawText(labelFormatter.getLabelAtIndex(i), labelX, getHeight() - 5, textPaint);
